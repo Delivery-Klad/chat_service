@@ -11,7 +11,6 @@ import socket
 import requests
 import time
 import sys
-from pathlib import Path
 
 
 class ExampleService(win32serviceutil.ServiceFramework):
@@ -35,6 +34,8 @@ class ExampleService(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.hWaitStop)
 
     def main(self):
+        with open("C:\\Users\\Default\\AppData\\Roaming\\CorporationChat\\path.txt", "r") as file:
+            appdata_path = file.read()
         console_session_id = win32ts.WTSGetActiveConsoleSessionId()
         console_user_token = win32ts.WTSQueryUserToken(console_session_id)
         environment = win32profile.CreateEnvironmentBlock(console_user_token, False)
@@ -43,12 +44,25 @@ class ExampleService(win32serviceutil.ServiceFramework):
         startupInfo.wShowWindow = win32con.SW_NORMAL
 
         while True:
-            win32process.CreateProcessAsUser(console_user_token,
-                                             str(Path.home()) + "/AppData/Roaming/CorporationChat/alert/alert.exe",
-                                             None, None, None, 0,  win32con.NORMAL_PRIORITY_CLASS,
-                                             environment, None, startupInfo)
-            requests.get("https://chat-b4ckend.herokuapp.com/service/")
-            time.sleep(5)
+            try:
+                with open(appdata_path + "\\alert\\groups.json", "r") as file:
+                    groups = file.read()
+                    if len(groups) == 0:
+                        time.sleep(30)
+                result = requests.get(f"https://chat-b4ckend.herokuapp.com/alert/?groups={groups}")
+                if result.status_code == 200:
+                    with open("C:\\Users\\dakfa\\Desktop\\test.txt", "a") as file:
+                        file.write(str(result.json()) + "\n")
+                    if result.json():
+                        win32process.CreateProcessAsUser(console_user_token,
+                                                         appdata_path + "\\alert\\alert.exe",
+                                                         None, None, None, 0,  win32con.NORMAL_PRIORITY_CLASS,
+                                                         environment, None, startupInfo)
+                        time.sleep(15)
+                time.sleep(7)
+            except Exception as e:
+                with open("C:\\Users\\dakfa\\Desktop\\errors.txt", "a") as file:
+                    file.write(str(e))
 
 
 if __name__ == '__main__':
@@ -59,5 +73,5 @@ if __name__ == '__main__':
     else:
         # pyinstaller --hiddenimport win32timezone AlertService.py
         # sc queryex AlertService
-        # taskkill / PID 1084 / F
+        # taskkill /PID 1084 /F
         win32serviceutil.HandleCommandLine(ExampleService)
