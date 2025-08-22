@@ -1,1 +1,1 @@
-# chat_service
+# Windows service for desktop chat notifications
